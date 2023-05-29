@@ -1,0 +1,137 @@
+Для сценария 
+Предусловие: 
+Игровой автомат готов к работе, игрок бросает монетку, на экране появляется три коробки 
+Шаги типичного хода событий: 
+Игрок бросает монетку, автомат принимает монету, игрок выбирает коробку, на экран выдаётся сообщение, если монетки найдены, то игроку начисляются монетки, в противном случае игрок теряет монету, игровой автомат предлагает пользователю закончить игру или продолжить.
+Альтернативный сценарий: монеток в коробках нет, пользователю предлагается добавить монеты для того чтобы начать игру 
+Постусловие: автомат сохраняет информацию об играх, игроку предлагается вывести статистику его игр
+Напиши class на языке программирования Java для игрока, автомата, кошелька игрока и контроллера с использованием паттерна “цепочка обязанностей” для принятия решения о выигрыше
+
+
+
+Player.java:
+
+public class Player {
+   private int coins;
+
+   public int getCoins() {
+      return coins;
+   }
+
+   public void addCoins(int coins) {
+      this.coins += coins;
+   }
+
+   public void removeCoins(int coins) {
+      this.coins -= coins;
+   }
+
+   public boolean hasCoins(int coins) {
+      return this.coins >= coins;
+   }
+}
+
+SlotMachine.java:
+
+public class SlotMachine {
+   private int coinCount;
+
+   public void insertCoin() {
+      coinCount++;
+   }
+
+   public boolean play(int selection) {
+      if (coinCount == 0) {
+         System.out.println("Please insert a coin to play.");
+         return false;
+      }
+      
+      coinCount--;
+      
+      boolean hasCoins = selection == 1 || selection == 2 || selection == 3;
+
+      if (!hasCoins) {
+         System.out.println("No coins in this box. Sorry!");
+         return false;
+      }
+
+      if (Math.random() < 0.5) {
+         System.out.println("Congratulations! You won a coin.");
+         return true;
+      }
+
+      System.out.println("Sorry, you didn't win this time.");
+      return false;
+   }
+}
+
+Wallet.java:
+
+public class Wallet implements CoinHandler {
+   private CoinHandler successor;
+   private Player player;
+
+   public Wallet(Player player) {
+      this.player = player;
+   }
+
+   public void setSuccessor(CoinHandler successor) {
+      this.successor = successor;
+   }
+
+   public void handleCoin() {
+      player.addCoins(1);
+      System.out.println("You added 1 coin to your wallet.");
+      
+      if (successor != null) {
+         successor.handleCoin();
+      }
+   }
+}
+
+SlotMachineController.java:
+
+public class SlotMachineController implements CoinHandler {
+   private CoinHandler successor;
+   private SlotMachine slotMachine;
+   private Player player;
+   
+   public SlotMachineController(Player player, SlotMachine slotMachine) {
+      this.player = player;
+      this.slotMachine = slotMachine;
+   }
+
+   public void setSuccessor(CoinHandler successor) {
+      this.successor = successor;
+   }
+
+   public void handleCoin() {
+      if (player.hasCoins(1)) {
+         player.removeCoins(1);
+         slotMachine.insertCoin();
+
+         boolean hasWonCoins = false;
+
+         do {
+            System.out.println("Please select a box (1, 2 or 3).");
+            Scanner scanner = new Scanner(System.in);
+            int selection = scanner.nextInt();
+
+            hasWonCoins = slotMachine.play(selection);
+         } while (hasWonCoins);
+
+         if (successor != null) {
+            successor.handleCoin();
+         }
+      } else {
+         System.out.println("Not enough coins in your wallet. Please add more coins.");
+      }
+   }
+}
+
+CoinHandler.java:
+
+public interface CoinHandler {
+   void setSuccessor(CoinHandler successor);
+   void handleCoin();
+}
